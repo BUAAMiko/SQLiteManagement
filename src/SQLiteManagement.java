@@ -197,4 +197,25 @@ public class SQLiteManagement {
         sql = null;
         return num;
     }
+
+    void updateChatMessage(List l) throws SQLException {
+        for (int i = 0; i < l.size(); i++) {
+            Map m = (Map) l.get(i);
+            sql = "SELECT * FROM ChatMessage WHERE Id = " + m.get("Id");
+            if (querySql().isEmpty()) {
+                sql = "INSERT INTO ChatMessage VALUES (" +
+                        m.get("Id") + ",\"" +
+                        m.get("Date") + "\"," +
+                        m.get("From") + "," +
+                        m.get("To") + ",\"" +
+                        m.get("MessageType") + "\",\"" +
+                        m.get("Message") + "\",\"" +
+                        m.get("SubMessage") + "\"" +
+                        ")";
+                updateSql();
+            }
+        }
+    }
+
+
 }
