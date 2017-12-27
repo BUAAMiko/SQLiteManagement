@@ -198,6 +198,12 @@ public class SQLiteManagement {
         return num;
     }
 
+    /**
+     * 更新本地数据库，将服务器返回的数据保存到本地数据库中
+     *
+     * @param l 远端服务器发送过来的数据
+     * @throws SQLException 更新数据库时可能抛出异常
+     */
     void updateChatMessage(List l) throws SQLException {
         for (int i = 0; i < l.size(); i++) {
             Map m = (Map) l.get(i);
@@ -217,5 +223,47 @@ public class SQLiteManagement {
         }
     }
 
+    /**
+     * 更新本地数据库，将服务器返回的数据保存到本地数据库中
+     *
+     * @param id 用户的Id
+     * @param username 用户的昵称
+     * @param exist 如果用户已经存在但是昵称和本地数据库不符则为true反之不存在则为false
+     * @throws SQLException 更新数据库的时候可能抛出异常
+     */
+    void updateUserInfo(int id, String username, boolean exist) throws SQLException {
+        if (exist)
+            sql = "UPDATE UserInfo SET Username = \"" + username + "\" WHERE Id = " + id;
+        else
+            sql = "INSERT INTO UserInfo VALUES (" +
+                    id + ",\"" +
+                    username + "\"" +
+                    ")";
+        updateSql();
+    }
 
+    /**
+     * 从本地数据库中取出与对应用户的聊天记录
+     *
+     * @param from 指定用户的Id
+     * @return 返回一个List，保存着聊天信息
+     * @throws SQLException 访问数据库的时候可能抛出异常
+     */
+    List queryChatMessage(int from) throws SQLException {
+        sql = "SELECT * FROM ChatMessage WHERE `From` = " + from;
+        return querySql();
+    }
+
+    /**
+     * 查询指定用户的昵称
+     * @param id 指定用户的Id
+     * @return 返回用户的昵称
+     * @throws SQLException 访问数据库的时候可能抛出异常
+     */
+    String queryUserInfo(int id) throws SQLException {
+        sql = "SELECT Username FROM UserInfo WHERE Id = " + id;
+        List l = querySql();
+        Map m = (Map) l.get(0);
+        return (String) m.get("Username");
+    }
 }
