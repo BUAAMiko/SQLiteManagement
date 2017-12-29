@@ -1,3 +1,7 @@
+import Client.UDPBunissness;
+
+import java.io.File;
+import java.io.IOException;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,8 +21,12 @@ public class SQLiteManagement {
      * @throws ClassNotFoundException 如果jdbc未能加载则可能会抛出异常
      * @throws SQLException 如果没有相应的数据库和表可能在新建时抛出异常
      */
-    SQLiteManagement() throws ClassNotFoundException, SQLException {
-        url = "jdbc:sqlite:./database.db";
+    SQLiteManagement(int Id) throws ClassNotFoundException, SQLException {
+        File Users = new File("Users/" + Id);
+        if (!Users.exists() || !Users.isDirectory()) {
+            Users.mkdirs();
+        }
+        url = "jdbc:sqlite:./Users/" + Id + "/database.db";
         init();
     }
 
@@ -111,7 +119,7 @@ public class SQLiteManagement {
     private void createUserInfoTable() throws SQLException {
         sql = "CREATE TABLE UserInfo\n" +
                 "(\n" +
-                "    Id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,\n" +
+                "    Id INTEGER PRIMARY KEY NOT NULL,\n" +
                 "    Username TEXT NOT NULL\n" +
                 ");";
         updateSql();
@@ -125,7 +133,7 @@ public class SQLiteManagement {
     private void createChatMessageTable() throws SQLException {
         sql = "CREATE TABLE ChatMessage\n" +
                 "(\n" +
-                "    Id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,\n" +
+                "    Id INTEGER PRIMARY KEY NOT NULL,\n" +
                 "    Date TEXT NOT NULL,\n" +
                 "    \"From\" INTEGER NOT NULL,\n" +
                 "    \"To\" INTEGER NOT NULL,\n" +
@@ -201,45 +209,98 @@ public class SQLiteManagement {
     /**
      * 更新本地数据库，将服务器返回的数据保存到本地数据库中
      *
-     * @param l 远端服务器发送过来的数据
+     * @param m 远端服务器发送过来的数据
      * @throws SQLException 更新数据库时可能抛出异常
      */
-    void updateChatMessage(List l) throws SQLException {
+    void updateChatMessage(Map m) throws Exception {
+        List l = (List) m.get("Message");
         for (int i = 0; i < l.size(); i++) {
-            Map m = (Map) l.get(i);
-            sql = "SELECT * FROM ChatMessage WHERE Id = " + m.get("Id");
+            Map tmp = (Map) l.get(i);
+            sql = "SELECT * FROM ChatMessage WHERE Id = " + tmp.get("Id");
             if (querySql().isEmpty()) {
                 sql = "INSERT INTO ChatMessage VALUES (" +
-                        m.get("Id") + ",\"" +
-                        m.get("Date") + "\"," +
-                        m.get("From") + "," +
-                        m.get("To") + ",\"" +
-                        m.get("MessageType") + "\",\"" +
-                        m.get("Message") + "\",\"" +
-                        m.get("SubMessage") + "\"" +
+                        tmp.get("Id") + ",\"" +
+                        tmp.get("Date") + "\"," +
+                        tmp.get("From") + "," +
+                        tmp.get("To") + ",\"" +
+                        tmp.get("MessageType") + "\",\"" +
+                        tmp.get("Message") + "\",\"" +
+                        tmp.get("SubMessage") + "\"" +
                         ")";
                 updateSql();
             }
         }
+        updateUserInfo((List) m.get("Friends"));
+    }
+
+    List getUserInfoFromServer(List l) throws Exception {
+        List response = new ArrayList();
+        for (Object aL : l) {
+            Map m = (Map) aL;
+            UDPBunissness addfriend=new UDPBunissness();
+            addfriend.setType("User_Info");
+            addfriend.setId((String) m.get("From"));
+            addfriend.sendData();
+            String userInfo=addfriend.receiveOfUserInfo() ;
+            Map map = new HashMap();
+            map.put("Id",m.get("From"));
+            map.put("Username",userInfo);
+            response.add(map);
+            /*Thread thread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        UDPBunissness addfriend=new UDPBunissness();
+                        addfriend.setType("User_Info");
+                        addfriend.setId((String) m.get("Id"));
+                        addfriend.sendData();
+                        String userInfo=addfriend.receiveOfUserInfo() ;
+                        ((Map) aL).put("Username",userInfo);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            thread.start();*/
+        }
+        return response;
     }
 
     /**
-     * 更新本地数据库，将服务器返回的数据保存到本地数据库中
+     * 更新本地数据库，从聊天消息表中获取到好友信息
      *
-     * @param id 用户的Id
-     * @param username 用户的昵称
-     * @param exist 如果用户已经存在但是昵称和本地数据库不符则为true反之不存在则为false
      * @throws SQLException 更新数据库的时候可能抛出异常
      */
-    void updateUserInfo(int id, String username, boolean exist) throws SQLException {
-        if (exist)
-            sql = "UPDATE UserInfo SET Username = \"" + username + "\" WHERE Id = " + id;
-        else
-            sql = "INSERT INTO UserInfo VALUES (" +
-                    id + ",\"" +
-                    username + "\"" +
-                    ")";
-        updateSql();
+    void updateUserInfo(List l) throws Exception {
+        for (int i = 0; i < l.size(); i++) {
+            Map m = (Map) l.get(i);
+            sql = "SELECT * FROM UserInfo WHERE Id = " + m.get("Id");
+            List queryList = querySql();
+            if (!queryList.isEmpty()) {
+                Map tmp = (Map) queryList.get(0);
+                if (m.get("Username") != tmp.get("Username")) {
+                    sql = "UPDATE UserInfo SET Username = \"" + m.get("Username") + "\" WHERE Id = " + m.get("From");
+                }
+                else
+                    continue;
+            } else
+                sql = "INSERT INTO UserInfo VALUES (" +
+                        m.get("From") + ",\"" +
+                        m.get("Username") + "\"" +
+                        ")";
+            updateSql();
+        }
+    }
+
+    /**
+     * 查询用户的信息
+     * @return 返回用户的信息的List<Map>，键为"Id""Username"
+     * @throws SQLException 访问数据库的时候可能抛出异常
+     */
+    List queryFriendList() throws SQLException {
+        sql = "SELECT * FROM UserInfo";
+        List l = querySql();
+        return l;
     }
 
     /**
@@ -252,18 +313,5 @@ public class SQLiteManagement {
     List queryChatMessage(int from) throws SQLException {
         sql = "SELECT * FROM ChatMessage WHERE `From` = " + from;
         return querySql();
-    }
-
-    /**
-     * 查询指定用户的昵称
-     * @param id 指定用户的Id
-     * @return 返回用户的昵称
-     * @throws SQLException 访问数据库的时候可能抛出异常
-     */
-    String queryUserInfo(int id) throws SQLException {
-        sql = "SELECT Username FROM UserInfo WHERE Id = " + id;
-        List l = querySql();
-        Map m = (Map) l.get(0);
-        return (String) m.get("Username");
     }
 }
