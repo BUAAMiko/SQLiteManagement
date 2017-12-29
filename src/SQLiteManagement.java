@@ -17,8 +17,8 @@ public class SQLiteManagement {
      * @throws ClassNotFoundException 如果jdbc未能加载则可能会抛出异常
      * @throws SQLException 如果没有相应的数据库和表可能在新建时抛出异常
      */
-    SQLiteManagement(int Id) throws ClassNotFoundException, SQLException {
-        url = "jdbc:sqlite:./Users/" + Id + "/database.db";
+    SQLiteManagement() throws ClassNotFoundException, SQLException {
+        url = "jdbc:sqlite:./database.db";
         init();
     }
 
@@ -221,46 +221,25 @@ public class SQLiteManagement {
                 updateSql();
             }
         }
-        updateUserInfo();
     }
 
     /**
-     * 更新本地数据库，从聊天消息表中获取到好友信息
+     * 更新本地数据库，将服务器返回的数据保存到本地数据库中
      *
+     * @param id 用户的Id
+     * @param username 用户的昵称
+     * @param exist 如果用户已经存在但是昵称和本地数据库不符则为true反之不存在则为false
      * @throws SQLException 更新数据库的时候可能抛出异常
      */
-    private void updateUserInfo() throws SQLException {
-        sql = "SELECT DISTINCT \"From\" FROM ChatMessage";
-        List l = querySql();
-        for (int i = 0; i < l.size(); i++) {
-            Map m = (Map) l.get(i);
-            sql = "SELECT * FROM ChatMessage WHERE Id = " + m.get("Id");
-            List queryList = querySql();
-            if (!queryList.isEmpty()) {
-                Map tmp = (Map) queryList.get(0);
-                if (tmp.get("Username") != m.get("Username"))
-                    sql = "UPDATE UserInfo SET Username = \"" + m.get("Username") + "\" WHERE Id = " + m.get("Id");
-                else
-                    continue;
-            } else {
-                sql = "INSERT INTO UserInfo VALUES (" +
-                        m.get("Id") + ",\"" +
-                        m.get("Username") + "\"" +
-                        ")";
-            }
-            updateSql();
-        }
-    }
-
-    /**
-     * 查询用户的信息
-     * @return 返回用户的信息的List<Map>，键为"Id""Username"
-     * @throws SQLException 访问数据库的时候可能抛出异常
-     */
-    List queryFriendList() throws SQLException {
-        sql = "SELECT * FROM UserInfo";
-        List l = querySql();
-        return l;
+    void updateUserInfo(int id, String username, boolean exist) throws SQLException {
+        if (exist)
+            sql = "UPDATE UserInfo SET Username = \"" + username + "\" WHERE Id = " + id;
+        else
+            sql = "INSERT INTO UserInfo VALUES (" +
+                    id + ",\"" +
+                    username + "\"" +
+                    ")";
+        updateSql();
     }
 
     /**
@@ -273,5 +252,18 @@ public class SQLiteManagement {
     List queryChatMessage(int from) throws SQLException {
         sql = "SELECT * FROM ChatMessage WHERE `From` = " + from;
         return querySql();
+    }
+
+    /**
+     * 查询指定用户的昵称
+     * @param id 指定用户的Id
+     * @return 返回用户的昵称
+     * @throws SQLException 访问数据库的时候可能抛出异常
+     */
+    String queryUserInfo(int id) throws SQLException {
+        sql = "SELECT Username FROM UserInfo WHERE Id = " + id;
+        List l = querySql();
+        Map m = (Map) l.get(0);
+        return (String) m.get("Username");
     }
 }
