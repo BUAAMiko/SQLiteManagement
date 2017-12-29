@@ -277,7 +277,7 @@ public class SQLiteManagement {
      * @throws SQLException 访问数据库的时候可能抛出异常
      */
     List queryChatMessage(int from) throws SQLException {
-        sql = "SELECT * FROM ChatMessage WHERE `From` = " + from;
+        sql = "SELECT * FROM ChatMessage WHERE `From` = " + from + " OR `From` = " + from;
         return querySql();
     }
 }
