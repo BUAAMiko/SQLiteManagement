@@ -1,4 +1,3 @@
-import Client.UDPBunissness;
 
 import java.io.File;
 import java.io.IOException;
@@ -231,39 +230,6 @@ public class SQLiteManagement {
             }
         }
         updateUserInfo((List) m.get("Friends"));
-    }
-
-    List getUserInfoFromServer(List l) throws Exception {
-        List response = new ArrayList();
-        for (Object aL : l) {
-            Map m = (Map) aL;
-            UDPBunissness addfriend=new UDPBunissness();
-            addfriend.setType("User_Info");
-            addfriend.setId((String) m.get("From"));
-            addfriend.sendData();
-            String userInfo=addfriend.receiveOfUserInfo() ;
-            Map map = new HashMap();
-            map.put("Id",m.get("From"));
-            map.put("Username",userInfo);
-            response.add(map);
-            /*Thread thread = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        UDPBunissness addfriend=new UDPBunissness();
-                        addfriend.setType("User_Info");
-                        addfriend.setId((String) m.get("Id"));
-                        addfriend.sendData();
-                        String userInfo=addfriend.receiveOfUserInfo() ;
-                        ((Map) aL).put("Username",userInfo);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            });
-            thread.start();*/
-        }
-        return response;
     }
 
     /**
